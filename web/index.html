@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MindChuk — For Minds That Never Turn Off</title>
+<meta name="description" content="The private feed for your brain. Text yourself anything: ideas, notes, links, lists. Tags file it, reminders ping you, search finds it. On your iPhone, nowhere else.">
+<link rel="icon" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root{--bg:#0a0a0a;--card:#171717;--line:#262626;--muted:#a3a3a3;--dim:#525252;--accent:#a3e635;--fg:#fff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Inter Tight",Inter,system-ui,sans-serif}
+  main{max-width:720px;margin:0 auto;padding:56px 20px 80px}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.01em}
+  .brand img{width:36px;height:36px;border-radius:9px}
+  h1{font-size:clamp(34px,7vw,56px);line-height:1.05;letter-spacing:-.03em;margin:40px 0 14px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .sub{color:var(--muted);font-size:18px;max-width:560px}
+  .cta{display:inline-block;margin-top:26px;background:var(--fg);color:#000;font-weight:700;padding:13px 20px;border-radius:12px;text-decoration:none}
+  .cta.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:56px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;color:var(--muted);font-size:14px}
+  .chat{margin-top:56px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px}
+  .b{max-width:78%;padding:10px 14px;border-radius:16px;font-size:15px}
+  .me{align-self:flex-end;background:var(--fg);color:#000;border-bottom-right-radius:4px}
+  .sys{align-self:flex-start;background:#262626;border-bottom-left-radius:4px;color:var(--muted);font-size:13px}
+  .tag{color:var(--accent);font-weight:700}
+  h2{margin:64px 0 8px;font-size:22px;letter-spacing:-.02em}
+  p.small{color:var(--muted);font-size:14px}
+  footer{margin-top:64px;color:var(--dim);font-size:13px;display:flex;gap:16px;flex-wrap:wrap}
+  footer a{color:var(--muted);text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="icon-180.png" alt=""> MindChuk</div>
+  <h1>Text yourself anything.<br><em>Find it instantly.</em></h1>
+  <p class="sub">The private feed for your brain. Ideas, notes, links, grocery lists, random 2am thoughts. Send it like a text and it's saved before the idea fades.</p>
+  <a class="cta" href="https://testflight.apple.com/" id="get">Get it on iPhone</a>
+  <a class="cta ghost" href="https://github.com/AssiamahS/mindchuk">Source on GitHub</a>
+
+  <div class="chat" aria-label="example">
+    <div class="b me">Vet opens at 8 on Saturdays</div>
+    <div class="b sys">filed under <span class="tag">#vet</span> (trigger word: vet)</div>
+    <div class="b me">Eggs, oat milk, limes, hot sauce <span class="tag">#groceries</span></div>
+    <div class="b me">Remind me at 9am to call the vet</div>
+    <div class="b sys">reminder set · tomorrow 9:00 AM</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>Send everything. Sort nothing.</h3><p>Every text becomes a card in a clean, searchable feed. No folders, no forms.</p></div>
+    <div class="card"><h3>A tag's word files it</h3><p>Write #groceries in a note and it files itself. Trigger words do the same.</p></div>
+    <div class="card"><h3>Reminders from plain words</h3><p>Start with “remind me” and say when. MindChuk pings you at that time.</p></div>
+    <div class="card"><h3>Photos and links save too</h3><p>Attach a photo, paste a link. The card shows it ready to open.</p></div>
+    <div class="card"><h3>Board, calendar, swipe</h3><p>Tags become columns. See any day. Swipe through the deck to sort it out.</p></div>
+    <div class="card"><h3>Private by design</h3><p>No account, no server, no upload. Everything lives on your iPhone. Export CSV any time.</p></div>
+  </div>
+
+  <h2 id="support">Support</h2>
+  <p class="small">Questions, problems, or ideas: <a href="https://github.com/AssiamahS/mindchuk/issues" style="color:#fff">open an issue on GitHub</a>. Tell us what you were trying to do and what happened, with a screenshot if you have one. We read every message.</p>
+
+  <h2>Privacy</h2>
+  <p class="small">MindChuk stores your notes only on your device. It has no accounts and sends nothing to us. Read the <a href="privacy.html" style="color:#fff">privacy policy</a>.</p>
+
+  <footer>
+    <span>© 2026 Sylvester Assiamah</span>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="https://github.com/AssiamahS/mindchuk">GitHub</a>
+  </footer>
+</main>
+</body>
+</html>

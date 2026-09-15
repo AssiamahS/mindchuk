@@ -1,0 +1,189 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', 'tools/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ios
+
+jobs:
+  build:
+    name: Build (unsigned compile check)
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for device (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MindChuk.xcodeproj \
+            -scheme MindChuk \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+  screenshots:
+    name: App Store screenshots (simulator, demo data)
+    runs-on: macos-26
+    timeout-minutes: 40
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Pick a Pro Max simulator
+        id: sim
+        run: |
+          xcrun simctl list devices available -j > devices.json
+          UDID=$(python3 - <<'EOF'
+          import json
+          d = json.load(open("devices.json"))["devices"]
+          picks = []
+          for runtime, devs in d.items():
+              if "iOS" not in runtime: continue
+              for x in devs:
+                  if x["isAvailable"] and x["name"].startswith("iPhone"):
+                      score = (("Pro Max" in x["name"]) * 2 + ("Pro" in x["name"]), runtime)
+                      picks.append((score, x["udid"], x["name"]))
+          picks.sort(reverse=True)
+          print(picks[0][1])
+          import sys; print(picks[0][2], file=sys.stderr)
+          EOF
+          )
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project MindChuk.xcodeproj \
+            -scheme MindChuk \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+      - name: Capture
+        env:
+          UDID: ${{ steps.sim.outputs.udid }}
+        run: |
+          set -x
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl ui "$UDID" appearance dark
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
+          APP=$(find build/Build/Products -name "MindChuk.app" -path "*iphonesimulator*" | head -1)
+          xcrun simctl install "$UDID" "$APP"
+          mkdir -p shots
+          i=1
+          for tab in feed board calendar swipe; do
+            xcrun simctl terminate "$UDID" com.assiamah.mindchuk || true
+            SIMCTL_CHILD_MINDCHUK_DEMO=1 xcrun simctl launch "$UDID" com.assiamah.mindchuk -tab "$tab"
+            sleep 6
+            xcrun simctl io "$UDID" screenshot "shots/0${i}-${tab}.png"
+            i=$((i+1))
+          done
+          ls -la shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: ios/shots/*.png
+      - name: Upload screenshots to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -z "$ASC_KEY_P8" ]; then echo "::notice::no ASC secrets, skipping upload"; exit 0; fi
+          mkdir -p "$RUNNER_TEMP/asc"
+          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
+          export ASC_P8_PATH="$RUNNER_TEMP/asc/AuthKey.p8"
+          pip3 install --quiet pillow
+          python3 ../tools/asc_screenshots.py shots/*.png
+
+  testflight:
+    name: Sign & upload to TestFlight
+    runs-on: macos-26
+    timeout-minutes: 45
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for App Store Connect credentials
+        id: creds
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "have=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ASC secrets not set — skipping TestFlight upload"
+          else
+            echo "have=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Write App Store Connect API key
+        if: steps.creds.outputs.have == 'true'
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/asc" "$HOME/private_keys"
+          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
+          cp "$RUNNER_TEMP/asc/AuthKey.p8" "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Install XcodeGen
+        if: steps.creds.outputs.have == 'true'
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        if: steps.creds.outputs.have == 'true'
+        run: |
+          # stamp the run number BEFORE generating — xcodegen bakes CFBundleVersion into the plists
+          sed -i '' "s/^    CURRENT_PROJECT_VERSION: .*/    CURRENT_PROJECT_VERSION: $GITHUB_RUN_NUMBER/" project.yml
+          xcodegen generate
+
+      - name: Archive (cloud-managed signing)
+        if: steps.creds.outputs.have == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project MindChuk.xcodeproj \
+            -scheme MindChuk \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/MindChuk.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
+
+      - name: Export & upload to App Store Connect
+        if: steps.creds.outputs.have == 'true'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath build/MindChuk.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
