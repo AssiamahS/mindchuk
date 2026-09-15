@@ -6,6 +6,7 @@ usage: asc_screenshots.py shots/01-feed.png shots/02-board.png ...
 import hashlib
 import os
 import sys
+import urllib.request
 
 from asc_common import api, must, version_id, version_localization
 
@@ -56,10 +57,14 @@ def upload(set_id, path):
     sid = r["data"]["id"]
     for op in r["data"]["attributes"]["uploadOperations"]:
         chunk = data[op["offset"]:op["offset"] + op["length"]]
+        # the upload URL is pre-signed storage: send ONLY Apple's headers, no Bearer token
         hdrs = {h["name"]: h["value"] for h in op["requestHeaders"]}
-        st2, body = api(op["method"], op["url"], raw=chunk, headers=hdrs)
-        if st2 >= 300:
-            raise SystemExit(f"chunk upload failed: {st2} {body}")
+        req = urllib.request.Request(op["url"], data=chunk, method=op["method"], headers=hdrs)
+        try:
+            with urllib.request.urlopen(req) as resp:
+                resp.read()
+        except urllib.error.HTTPError as e:
+            raise SystemExit(f"chunk upload failed: {e.code} {e.read()[:300]!r}")
     st, r = api("PATCH", f"/v1/appScreenshots/{sid}", {"data": {
         "type": "appScreenshots", "id": sid,
         "attributes": {"uploaded": True, "sourceFileChecksum": hashlib.md5(data).hexdigest()}}})
