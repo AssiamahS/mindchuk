@@ -23,6 +23,7 @@ struct SettingsView: View {
                 }
                 Section {
                     NavigationLink("Tags") { TagsView() }
+                    NavigationLink { LockScreenGuide() } label: { Label("Lock screen & texting", systemImage: "lock.fill") }
                     NavigationLink("How MindChuk works") { HowItWorks() }
                 }
                 Section {
@@ -88,6 +89,62 @@ struct HowItWorks: View {
                 Text(title).font(.headline)
                 Text(body).font(.subheadline).foregroundStyle(Theme.muted)
             }
+        }
+    }
+}
+
+/// How to get MindChuk onto the lock screen and how to "text it" from Messages / Siri.
+struct LockScreenGuide: View {
+    @Environment(\.modelContext) private var ctx
+    @AppStorage(LockScreen.liveActivityKey) private var liveActivity = true
+    @State private var running = LiveActivityController.isRunning
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Today card on the lock screen", isOn: $liveActivity)
+                    .onChange(of: liveActivity) { _, on in
+                        if on { LockScreen.refresh(in: ctx) } else { Task { await LiveActivityController.end() } }
+                        running = on
+                    }
+                Button {
+                    liveActivity = true
+                    LockScreen.refresh(in: ctx)
+                    running = true
+                } label: { Label(running ? "Refresh the Today card" : "Put it on my lock screen now", systemImage: "arrow.clockwise") }
+            } header: { Text("Live card") } footer: {
+                Text("A MindChuk card sits on your lock screen and in the Dynamic Island with today's reminders and your latest notes. It updates every time you text yourself. iOS ends it after 8 hours; opening MindChuk or saying “Hey Siri, put MindChuk on the lock screen” brings it back.")
+            }
+            Section("Widgets (always there)") {
+                step(1, "Touch and hold the lock screen, tap Customize, then Lock Screen.")
+                step(2, "Tap the widget row under the clock and pick MindChuk. The line above the clock can show your next reminder too.")
+                step(3, "On the Home Screen, long-press → Edit → Add Widget → MindChuk for the bigger card.")
+            }
+            Section {
+                step(1, "Open Shortcuts → Automation → + → Message.")
+                step(2, "Sender: your own contact. Turn on Run Immediately.")
+                step(3, "Next → New Blank Automation → add the action “Text MindChuk” and set its Text to Shortcut Input.")
+                Link(destination: URL(string: "shortcuts://")!) { Label("Open Shortcuts", systemImage: "arrow.up.forward.app") }
+            } header: { Text("Text it from Messages") } footer: {
+                Text("After that, any iMessage you send to yourself lands in MindChuk within seconds, with tags and reminders parsed, and the lock screen updates. No server, no phone number, nothing leaves your phone.")
+            }
+            Section("Siri, Action button, Back Tap") {
+                step(1, "Say “Hey Siri, text MindChuk” and dictate the note.")
+                step(2, "Settings → Action Button → Shortcut → Text MindChuk, or Accessibility → Touch → Back Tap → Text MindChuk.")
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(Theme.bg.ignoresSafeArea())
+        .navigationTitle("Lock screen & texting")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { running = LiveActivityController.isRunning }
+    }
+
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(n)").font(.caption.bold()).foregroundStyle(Theme.bg)
+                .frame(width: 22, height: 22).background(Theme.accent, in: Circle())
+            Text(text).font(.subheadline)
         }
     }
 }

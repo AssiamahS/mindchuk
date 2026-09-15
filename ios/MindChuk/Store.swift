@@ -14,7 +14,7 @@ enum Store {
         ctx.insert(note)
         attachTags(to: note, in: ctx)
         if note.remindAt != nil { Reminders.schedule(note) }
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
         return note
     }
 
@@ -45,19 +45,19 @@ enum Store {
         if parsed.remindAt != nil { note.remindAt = parsed.remindAt }
         attachTags(to: note, in: ctx)
         if note.remindAt != nil { Reminders.schedule(note) }
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
     }
 
     static func setReminder(_ note: Note, at date: Date?, in ctx: ModelContext) {
         note.remindAt = date
         if date == nil { Reminders.cancel(note) } else { Reminders.schedule(note) }
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
     }
 
     static func delete(_ note: Note, in ctx: ModelContext) {
         Reminders.cancel(note)
         ctx.delete(note)
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
     }
 
     static func tag(named name: String, in ctx: ModelContext) -> Tag? {
@@ -82,14 +82,14 @@ enum Store {
                 if !n.tags.contains(where: { $0.name == clean }) { n.tags.append(t) }
             }
         }
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
         return t
     }
 
     static func deleteTag(_ t: Tag, in ctx: ModelContext) {
         for n in t.notes { n.tags.removeAll { $0.name == t.name } }
         ctx.delete(t)
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
     }
 
     static func csv(_ notes: [Note]) -> String {
@@ -129,7 +129,7 @@ enum Store {
             ctx.insert(n)
             attachTags(to: n, in: ctx)
         }
-        try? ctx.save()
+        try? ctx.save(); LockScreen.refresh(in: ctx)
         UserDefaults.standard.set("ideas,groceries,travel", forKey: "boardColumns")
         UserDefaults.standard.set("ideas", forKey: "swipeFinishTag")
     }

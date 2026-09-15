@@ -6,6 +6,14 @@ A local-first iPhone notes app built around one habit: sending yourself a text. 
 
 No account, no server, nothing leaves the phone. Export CSV from Settings.
 
+## Lock screen + texting it (v1.1)
+
+- **Widgets**: lock screen (rectangular / inline / circular) and Home Screen (small / medium) show today's reminders and latest notes. The app hands the extension a small snapshot through a team-prefixed keychain access group, so no App Group has to exist in the developer portal (App Groups can't be created by the CI's API-key session).
+- **Today card**: a Live Activity on the lock screen / Dynamic Island, refreshed on every note. iOS ends it after 8h; opening the app or the Siri phrase brings it back.
+- **"Text MindChuk"** App Intent: Siri ("Hey Siri, text MindChuk"), Shortcuts, Action button, Back Tap, and a Messages automation (when I get a message from *me* → Text MindChuk with Shortcut Input) so texting yourself in iMessage files the note. It is a `LiveActivityIntent`, so it runs in the background and still updates the lock screen.
+
+Setup steps are in the app under Settings → Lock screen & texting.
+
 ## Layout
 
 - `ios/` — SwiftUI + SwiftData app. `project.yml` is the source of truth (XcodeGen); the `.xcodeproj` is generated in CI.

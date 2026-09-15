@@ -6,27 +6,20 @@ struct MindChukApp: App {
     @AppStorage("lightMode") private var lightMode = false
     @AppStorage("seeded") private var seeded = false
 
-    let container: ModelContainer = {
-        let schema = Schema([Note.self, Tag.self])
-        let demo = ProcessInfo.processInfo.environment["MINDCHUK_DEMO"] == "1"
-            || CommandLine.arguments.contains("-demo")
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: demo)
-        do {
-            let c = try ModelContainer(for: schema, configurations: [config])
-            if demo {
-                Task { @MainActor in Store.seedDemo(in: c.mainContext) }
-            }
-            return c
-        } catch {
-            fatalError("MindChuk could not open its database: \(error)")
+    let container = Persistence.container
+
+    init() {
+        if Persistence.isDemo {
+            Task { @MainActor in Store.seedDemo(in: Persistence.container.mainContext) }
         }
-    }()
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .preferredColorScheme(lightMode ? .light : .dark)
                 .tint(Theme.accent)
+                .task { LockScreen.refresh(in: container.mainContext) }
         }
         .modelContainer(container)
     }
