@@ -1,0 +1,1 @@
+- 2026-09-16 v1.1: widget extension + Live Activity + App Intent shipped through CI cloud signing with NO App Group: app<->widget share a keychain item in $(AppIdentifierPrefix)com.assiamah.mindchuk (keychain-access-groups needs nothing registered in the portal, unlike App Groups which broke ccwatch). AppIntents: @Parameter(inputOptions:) must precede requestValueDialog:.
