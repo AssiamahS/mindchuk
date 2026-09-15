@@ -13,13 +13,9 @@ struct AddNoteIntent: AppIntent, LiveActivityIntent {
         categoryName: "Notes")
     static let openAppWhenRun = false
 
-    @Parameter(title: "Text", requestValueDialog: "What do you want to text yourself?",
-               inputOptions: String.IntentInputOptions(multiline: true))
+    @Parameter(title: "Text", inputOptions: String.IntentInputOptions(multiline: true),
+               requestValueDialog: "What do you want to text yourself?")
     var text: String
-
-    static var parameterSummary: some ParameterSummary {
-        Summary("Text \(\.$text) to MindChuk")
-    }
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog & ReturnsValue<String> {
