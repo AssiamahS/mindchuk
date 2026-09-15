@@ -86,18 +86,24 @@ jobs:
           xcrun simctl install "$UDID" "$APP"
           mkdir -p shots
           i=1
-          for tab in feed board calendar swipe; do
+          for tab in feed board calendar swipe settings; do
             xcrun simctl terminate "$UDID" com.assiamah.mindchuk || true
             SIMCTL_CHILD_MINDCHUK_DEMO=1 xcrun simctl launch "$UDID" com.assiamah.mindchuk -tab "$tab"
-            sleep 6
+            sleep 8
             xcrun simctl io "$UDID" screenshot "shots/0${i}-${tab}.png"
+            echo "--- $tab: alive=$(pgrep -f 'MindChuk.app/MindChuk' | wc -l | tr -d ' ')"
             i=$((i+1))
           done
           ls -la shots
+          # diagnostics: crash reports + last minute of app log, in case a tab came up blank
+          mkdir -p shots/diag
+          cp ~/Library/Logs/DiagnosticReports/MindChuk* shots/diag/ 2>/dev/null || true
+          xcrun simctl spawn "$UDID" log show --last 3m --predicate 'process == "MindChuk"' --style compact > shots/diag/app.log 2>&1 || true
+          ls -la shots/diag; grep -iE "fatal|crash|exception|error" shots/diag/app.log | head -20 || true
       - uses: actions/upload-artifact@v4
         with:
           name: screenshots
-          path: ios/shots/*.png
+          path: ios/shots/
       - name: Upload screenshots to App Store Connect
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -108,8 +114,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/asc"
           printf '%s' "$ASC_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
           export ASC_P8_PATH="$RUNNER_TEMP/asc/AuthKey.p8"
-          pip3 install --quiet pillow
-          python3 ../tools/asc_screenshots.py shots/*.png
+          python3 -m pip install --quiet --break-system-packages pillow || pip3 install --quiet --user pillow
+          python3 ../tools/asc_screenshots.py shots/0[1-4]-*.png
 
   testflight:
     name: Sign & upload to TestFlight

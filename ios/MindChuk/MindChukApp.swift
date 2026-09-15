@@ -52,7 +52,6 @@ struct RootView: View {
             Tab("Settings", systemImage: "gearshape.fill", value: "settings") { SettingsView() }
         }
         .fontDesign(AppFont.design(fontStyle))
-        .onAppear { Reminders.requestPermission() }
     }
 }
 

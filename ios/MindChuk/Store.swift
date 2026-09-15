@@ -136,10 +136,8 @@ enum Store {
 }
 
 enum Reminders {
-    static func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
-    }
-
+    /// Asks for permission the first time a reminder is actually created (not at launch),
+    /// then schedules. Already-authorized devices resolve immediately.
     static func schedule(_ note: Note) {
         guard let date = note.remindAt, date > .now else { return }
         cancel(note)
@@ -150,8 +148,12 @@ enum Reminders {
         content.sound = .default
         let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+        let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
         note.reminderId = id
+        let center = UNUserNotificationCenter.current()
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+            if granted { center.add(request) }
+        }
     }
 
     static func cancel(_ note: Note) {
