@@ -26,12 +26,33 @@ def _b64url(b):
     return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
 
 
+_offset = None
+
+
+def clock_offset():
+    """Mac clock drifts a day behind; Apple rejects JWTs minted in the past. Ask time.apple.com once."""
+    global _offset
+    if _offset is None:
+        _offset = 0.0
+        if os.environ.get("ASC_TIME_OFFSET"):
+            _offset = float(os.environ["ASC_TIME_OFFSET"])
+        else:
+            try:
+                out = subprocess.run(["sntp", "-t", "3", "time.apple.com"], capture_output=True, text=True, timeout=8).stdout
+                for line in out.splitlines():
+                    if "+/-" in line:
+                        _offset = float(line.split()[0])
+            except Exception:
+                pass
+    return _offset
+
+
 def jwt():
     global _token, _token_at
     if _token and time.time() - _token_at < 900:
         return _token
     header = {"alg": "ES256", "kid": KEY_ID, "typ": "JWT"}
-    now = int(time.time())
+    now = int(time.time() + clock_offset())
     payload = {"iss": ISSUER, "iat": now, "exp": now + 1200, "aud": "appstoreconnect-v1"}
     si = f"{_b64url(json.dumps(header).encode())}.{_b64url(json.dumps(payload).encode())}"
     der = subprocess.run(["openssl", "dgst", "-sha256", "-sign", P8],
